@@ -4,10 +4,12 @@ import logging
 import os
 from contextlib import asynccontextmanager
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, Depends, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from jose import JWTError, jwt
 from passlib.hash import bcrypt
@@ -56,9 +58,13 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="BTC Trading Bot", lifespan=lifespan)
 
+cors_origins = os.getenv(
+    "CORS_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173"
+).split(",")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
+    allow_origins=cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -231,3 +237,18 @@ async def ws_candles(ws: WebSocket):
     finally:
         if realtime_bars is not None:
             ibkr.ib.cancelRealTimeBars(realtime_bars)
+
+
+# --- Static file serving (production: built frontend) ---
+
+STATIC_DIR = Path(__file__).parent / "static"
+
+if STATIC_DIR.is_dir():
+
+    @app.get("/{full_path:path}")
+    async def serve_spa(full_path: str):
+        """Serve built frontend files, falling back to index.html for SPA routing."""
+        file = STATIC_DIR / full_path
+        if file.is_file():
+            return FileResponse(file)
+        return FileResponse(STATIC_DIR / "index.html")
