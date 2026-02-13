@@ -1,0 +1,7 @@
+fastapi
+uvicorn[standard]
+ib_insync
+python-jose[cryptography]
+passlib[bcrypt]
+python-dotenv
+websockets
