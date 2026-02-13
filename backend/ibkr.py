@@ -118,6 +118,38 @@ class IBKRClient:
         bars.updateEvent += callback
         return bars
 
+    async def get_max_contracts(self, side: str) -> int:
+        """Calculate max contracts affordable using whatIfOrder for real margin data."""
+        await self.ensure_connected()
+        contract = await self.qualify_contract()
+        action = "BUY" if side.upper() == "BUY" else "SELL"
+
+        # Simulate a 1-contract order to get margin requirement
+        test_order = MarketOrder(action, 1)
+        test_order.whatIf = True
+        state = self.ib.whatIfOrder(contract, test_order)
+
+        # Wait for IBKR to return the margin info
+        for _ in range(50):
+            await asyncio.sleep(0.1)
+            if state.initMarginChange:
+                break
+
+        margin_per_contract = float(state.initMarginChange) if state.initMarginChange else 0
+        if margin_per_contract <= 0:
+            logger.warning(f"Could not determine margin, initMarginChange={state.initMarginChange}")
+            return 1
+
+        available = float(state.equityWithLoanAfter) if state.equityWithLoanAfter else 0
+        # Use the available equity after the test order, then divide by margin per contract
+        # But we need pre-order available funds — get from account summary
+        summary = await self.get_account_summary()
+        available = summary.available_funds
+
+        max_qty = int(available / margin_per_contract)
+        logger.info(f"Max contracts: {max_qty} (available={available}, margin_per={margin_per_contract})")
+        return max(max_qty, 1)
+
     async def place_order(self, side: str, quantity: int = 1) -> dict:
         await self.ensure_connected()
         contract = await self.qualify_contract()
@@ -138,6 +170,22 @@ class IBKRClient:
             "status": trade.orderStatus.status,
             "avg_fill_price": trade.orderStatus.avgFillPrice or None,
         }
+
+    async def place_max_order(self, side: str) -> dict:
+        """Place an order using the maximum affordable number of contracts."""
+        quantity = await self.get_max_contracts(side)
+        return await self.place_order(side, quantity)
+
+    async def close_position(self) -> dict:
+        """Close any open MBT position by trading the opposite side."""
+        await self.ensure_connected()
+        positions = await self.get_positions()
+        mbt = next((p for p in positions if p.size != 0), None)
+        if mbt is None:
+            return {"order_id": 0, "side": "NONE", "quantity": 0, "status": "NO_POSITION", "avg_fill_price": None}
+        side = "SELL" if mbt.size > 0 else "BUY"
+        quantity = abs(int(mbt.size))
+        return await self.place_order(side, quantity)
 
     async def get_positions(self) -> list[Position]:
         await self.ensure_connected()

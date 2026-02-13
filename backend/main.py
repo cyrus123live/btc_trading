@@ -116,13 +116,21 @@ async def get_positions(user: str = Depends(verify_token)):
 async def place_order(req: OrderRequest, user: str = Depends(verify_token)):
     if req.side.upper() not in ("BUY", "SELL"):
         raise HTTPException(status_code=400, detail="Side must be BUY or SELL")
-    if req.quantity < 1:
-        raise HTTPException(status_code=400, detail="Quantity must be >= 1")
     try:
-        result = await ibkr.place_order(req.side, req.quantity)
+        result = await ibkr.place_max_order(req.side)
         return OrderResponse(**result)
     except Exception as e:
         logger.error(f"Error placing order: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/close-position", response_model=OrderResponse)
+async def close_position(user: str = Depends(verify_token)):
+    try:
+        result = await ibkr.close_position()
+        return OrderResponse(**result)
+    except Exception as e:
+        logger.error(f"Error closing position: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 

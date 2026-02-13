@@ -66,12 +66,18 @@ export async function fetchCandleHistory(duration = "1 D", barSize = "1 min") {
   return res.json();
 }
 
-export async function placeOrder(side: "BUY" | "SELL", quantity: number) {
+export async function placeOrder(side: "BUY" | "SELL") {
   const res = await authFetch("/order", {
     method: "POST",
-    body: JSON.stringify({ side, quantity }),
+    body: JSON.stringify({ side }),
   });
   if (!res.ok) throw new Error("Failed to place order");
+  return res.json();
+}
+
+export async function closePosition() {
+  const res = await authFetch("/close-position", { method: "POST" });
+  if (!res.ok) throw new Error("Failed to close position");
   return res.json();
 }
 
