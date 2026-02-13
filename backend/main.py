@@ -12,7 +12,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from jose import JWTError, jwt
-from passlib.hash import bcrypt
 
 from ibkr import IBKRClient
 from models import (
@@ -35,7 +34,7 @@ JWT_SECRET = os.getenv("JWT_SECRET", "dev-secret-change-me")
 JWT_ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
 JWT_EXPIRE_MINUTES = int(os.getenv("JWT_EXPIRE_MINUTES", "1440"))
 USERNAME = os.getenv("USERNAME", "admin")
-PASSWORD_HASH = os.getenv("PASSWORD_HASH", "")
+PASSWORD = os.getenv("PASSWORD", "")
 
 # IBKR client singleton
 ibkr = IBKRClient(host=IBKR_HOST, port=IBKR_PORT, client_id=IBKR_CLIENT_ID)
@@ -95,7 +94,7 @@ def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)) 
 async def login(req: AuthRequest):
     if req.username != USERNAME:
         raise HTTPException(status_code=401, detail="Invalid credentials")
-    if not PASSWORD_HASH or not bcrypt.verify(req.password, PASSWORD_HASH):
+    if not PASSWORD or req.password != PASSWORD:
         raise HTTPException(status_code=401, detail="Invalid credentials")
     token = create_token(req.username)
     return TokenResponse(access_token=token)
