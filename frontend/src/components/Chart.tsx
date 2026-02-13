@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { createChart } from "lightweight-charts";
+import { createChart, CandlestickSeries } from "lightweight-charts";
 import type { IChartApi, ISeriesApi, CandlestickData, Time } from "lightweight-charts";
 import { fetchCandleHistory, createCandleWebSocket } from "../api";
 import type { Candle } from "../types";
@@ -35,7 +35,7 @@ export default function Chart() {
     });
     chartRef.current = chart;
 
-    const series = chart.addCandlestickSeries({
+    const series = chart.addSeries(CandlestickSeries, {
       upColor: "#22c55e",
       downColor: "#ef4444",
       borderUpColor: "#22c55e",
