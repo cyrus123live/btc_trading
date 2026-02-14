@@ -1,0 +1,18 @@
+services:
+  ib-gateway:
+    image: ghcr.io/gnzsnz/ib-gateway:latest
+    environment:
+      TWS_USERID: ${TWS_USERID}
+      TWS_PASSWORD: ${TWS_PASSWORD}
+      TRADING_MODE: ${TRADING_MODE:-paper}
+      TWS_ACCEPT_INCOMING: "accept"
+      TWS_SETTINGS_PATH: /home/ibgateway/Jts
+    ports:
+      - "4002:4002"
+      - "4001:4001"
+    volumes:
+      - ibgateway-data:/home/ibgateway/Jts
+    restart: always
+
+volumes:
+  ibgateway-data:
