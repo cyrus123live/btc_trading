@@ -7,9 +7,11 @@ services:
       TRADING_MODE: ${TRADING_MODE:-paper}
       TWS_ACCEPT_INCOMING: "accept"
       TWS_SETTINGS_PATH: /home/ibgateway/Jts
+    # Bind to Tailscale IP only — replace with your server's Tailscale IP
+    # Find it with: tailscale ip -4
     ports:
-      - "4002:4002"
-      - "4001:4001"
+      - "${TAILSCALE_IP:-127.0.0.1}:4002:4002"
+      - "${TAILSCALE_IP:-127.0.0.1}:4001:4001"
     volumes:
       - ibgateway-data:/home/ibgateway/Jts
     restart: always
